@@ -43,7 +43,7 @@ namespace firePi
             var i2cDevice_a = I2cDevice.Create(i2cConnectionSettings_a);
             var i2cDevice_b = I2cDevice.Create(i2cConnectionSettings_b);
 
-            // Staticly configure each relay on board A
+            // Staticly configure each relay on board A (negative)
             Mcp23017 mcp23017_a = new Mcp23017(i2cDevice_a);
             Relay[] relayBoard_a = new Relay[16];
             relayBoard_a[0] = new Relay(mcp23017_a, Port.PortA, 0xfe);
@@ -63,7 +63,7 @@ namespace firePi
             relayBoard_a[14] = new Relay(mcp23017_a, Port.PortB, 0xbf);
             relayBoard_a[15] = new Relay(mcp23017_a, Port.PortB, 0x7f);
 
-            // Staticly configure each relay on board B
+            // Staticly configure each relay on board B (positive)
             Mcp23017 mcp23017_b = new Mcp23017(i2cDevice_b);
             Relay[] relayBoard_b = new Relay[16];
             relayBoard_b[0] = new Relay(mcp23017_b, Port.PortA, 0xfe);
@@ -84,18 +84,19 @@ namespace firePi
             relayBoard_b[15] = new Relay(mcp23017_b, Port.PortB, 0x7f);
 
             // Populate all cues
-            Cue[,] cues = new Cue[relayBoard_a.Length, relayBoard_b.Length];
-            for (int i=0; i<relayBoard_a.Length; i++) {
-                for (int j=0; j<relayBoard_b.Length; j++){
-                    cues[i, j] = new Cue(relayBoard_a[i], relayBoard_b[j]);
+            int cueCount = relayBoard_a.Length * relayBoard_b.Length;
+            Cue[] cues = new Cue[cueCount];
+            int currentCue = 0;
+            for (int i=0; i<relayBoard_b.Length; i++) {
+                for (int j=0; j<relayBoard_a.Length; j++){
+                    cues[currentCue++] = new Cue(relayBoard_b[i], relayBoard_a[j]);
                 }
             }
 
             // Fire all cues
-            for (int i=0; i<relayBoard_a.Length; i++) {
-                for (int j=0; j<relayBoard_b.Length; j++) {
-                    WriteByteWithDelay(cues[i, j], 1000);
-                }
+            for (int i=0; i<cues.Length; i++) {
+                    WriteByteWithDelay(cues[i], 1000);
+                    Console.WriteLine("Firing cue: {0:d}", i);
             }
         }
 
@@ -110,11 +111,6 @@ namespace firePi
 
             cue.positiveRelay.mcp.WriteByte(register, 0xff, cue.positiveRelay.port);
             cue.negativeRelay.mcp.WriteByte(register, 0xff, cue.negativeRelay.port);
-
-            var dataRead = cue.positiveRelay.mcp.ReadByte(register, cue.positiveRelay.port);
-            Console.WriteLine($"\tIODIR: 0x{dataRead:X2}");
-            dataRead = cue.negativeRelay.mcp.ReadByte(register, cue.negativeRelay.port);
-            Console.WriteLine($"\tIODIR: 0x{dataRead:X2}");
         }
     }
 }

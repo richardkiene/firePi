@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Device.I2c;
+using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
@@ -53,14 +54,14 @@ namespace firePi
         private static readonly int s_deviceAddress_b = 0x22;
 
         public class Options
-        { 
+        {
             [Option('v', "verbose", Required = false, HelpText = "Set output to verbose messages.")]
             public bool Verbose { get; set; }
 
             [Option('i', "interactive", Required = false, HelpText = "Interactively trigger cues")]
             public bool Interactive { get; set; }
 
-            [Option('f', "file", Required = false, HelpText = "Json firing order file")]
+            [Option('f', "file", Required = false, HelpText = "Json firing order")]
             public string File { get; set; }
         }
 
@@ -71,21 +72,9 @@ namespace firePi
                 {
                     if (o.Verbose)
                     {
-                        //TODO: Everything
-                        FiringSequence firingSequence = new FiringSequence();
+                        string jsonString = File.ReadAllText(o.File);
+                        FiringSequence firingSequence = JsonSerializer.Deserialize<FiringSequence>(jsonString);
 
-                        // TODO: Replace this with the json config file passed in args
-                        firingSequence.instructions = new Instruction[256];
-                        for (int i=0; i<firingSequence.instructions.Length; i++)
-                        {
-                            firingSequence.instructions[i] = new Instruction();
-                            firingSequence.instructions[i].Duration = 1000;
-                            firingSequence.instructions[i].Delay = 1000;
-                            firingSequence.instructions[i].CueNumbers = new int[] { i };
-                        }
-
-                        // string jsonString = JsonSerializer.Serialize(firingSequence);
-                        // Console.WriteLine(jsonString);
                         var i2cConnectionSettings_a = new I2cConnectionSettings(1, s_deviceAddress_a);
                         var i2cConnectionSettings_b = new I2cConnectionSettings(1, s_deviceAddress_b);
                         var i2cDevice_a = I2cDevice.Create(i2cConnectionSettings_a);

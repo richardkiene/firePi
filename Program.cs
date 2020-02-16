@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Device.I2c;
 using System.IO;
 using System.Text.Json;
@@ -59,6 +61,12 @@ namespace firePi
             [Option('v', "verbose", Required = false, HelpText = "Set output to verbose messages.")]
             public bool Verbose { get; set; }
 
+            [Option('b', "build", Required = false, HelpText = "Build a firing order json file")]
+            public bool Build{ get; set; }
+
+            [Option('o', "output", Required = false, HelpText ="File to output configuration to")]
+            public string OutputFile { get; set; }
+
             [Option('i', "interactive", Required = false, HelpText = "Interactively trigger cues")]
             public bool Interactive { get; set; }
 
@@ -72,31 +80,73 @@ namespace firePi
                 .WithParsed<Options>(o =>
                 {
                     s_verbose = o.Verbose;
-                    if (File.Exists(o.File) && !o.Interactive)
+                    if (String.IsNullOrEmpty(o.OutputFile) && !String.IsNullOrEmpty(o.File) && File.Exists(o.File) && !o.Interactive && !o.Build)
                     {
                         string jsonString = File.ReadAllText(o.File);
                         FiringSequence firingSequence = JsonSerializer.Deserialize<FiringSequence>(jsonString);
                         RunFiringSequence(firingSequence);
                     }
-                    else if (o.Interactive)
+                    else if (o.Interactive && !o.Build && String.IsNullOrEmpty(o.File) && String.IsNullOrEmpty(o.OutputFile))
                     {
                         while(true)
                         {
                             Console.WriteLine("Enter cue to fire: ");
-                            int cueNum = Convert.ToInt32(Console.ReadLine());
-                            FiringSequence firingSequence = new FiringSequence();
-                            firingSequence.instructions = new Instruction[1];
-                            firingSequence.instructions[0] = new Instruction();
-                            firingSequence.instructions[0].CueNumbers = new int[1];
-                            firingSequence.instructions[0].CueNumbers[0] = cueNum;
-                            firingSequence.instructions[0].Delay = 1000;
-                            firingSequence.instructions[0].Duration = 1000;
-                            RunFiringSequence(firingSequence);
+                            try
+                            {
+                                int cueNum = Convert.ToInt32(Console.ReadLine());
+                                if (cueNum > 255)
+                                {
+                                    throw new Exception();
+                                }
+
+                                FiringSequence firingSequence = new FiringSequence();
+                                firingSequence.instructions = new Instruction[1];
+                                firingSequence.instructions[0] = new Instruction();
+                                firingSequence.instructions[0].CueNumbers = new int[1];
+                                firingSequence.instructions[0].CueNumbers[0] = cueNum;
+                                firingSequence.instructions[0].Delay = 1000;
+                                firingSequence.instructions[0].Duration = 1000;
+                                RunFiringSequence(firingSequence);
+                            }
+                            catch
+                            {
+                                Console.WriteLine("Cue must be a integer between 0 and 255");
+                            }
+                        }
+                    }
+                    else if (o.Build && !o.Interactive && !String.IsNullOrEmpty(o.OutputFile) && String.IsNullOrEmpty(o.File))
+                    {
+                        List<Instruction> instructions = new List<Instruction>();
+
+                        for (int i=0; i < 255; i++)
+                        {
+                            Console.WriteLine("Type add for a new cue or type exit:";
+                            try
+                            {
+                                string command = Console.ReadLine();
+                                if (command.Equals("exit"))
+                                {
+                                    break;
+                                }
+                                else if (command.Equals("add"))
+                                {
+                                    Instruction instruction = new Instruction();
+                                    instruction.CueNumbers = new int[] { i };
+                                    Console.WriteLine("Enter cue delay:");
+                                    instruction.Delay = Convert.ToInt32(Console.ReadLine());
+                                    Console.WriteLine("Enter cue duration:");
+                                    instruction.Duration = Convert.ToInt32(Console.ReadLine());
+                                }
+                            }
+                            catch
+                            {
+
+                            }
                         }
                     }
                     else
                     {
-                        Console.WriteLine("Yeah that does not work yet");
+                        Console.WriteLine("Yeah that does not work yet or you were dumb");
                     }
                 });
         }

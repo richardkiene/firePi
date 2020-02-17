@@ -117,10 +117,10 @@ namespace firePi
                     else if (o.Build && !o.Interactive && !String.IsNullOrEmpty(o.OutputFile) && String.IsNullOrEmpty(o.File))
                     {
                         List<Instruction> instructions = new List<Instruction>();
-
-                        for (int i=0; i < 255; i++)
+                        int cueNum = 0;
+                        while (cueNum < 255)
                         {
-                            Console.WriteLine("Type add for a new cue or type exit:";
+                            Console.WriteLine("Type add for a new cue or type exit:");
                             try
                             {
                                 string command = Console.ReadLine();
@@ -131,18 +131,25 @@ namespace firePi
                                 else if (command.Equals("add"))
                                 {
                                     Instruction instruction = new Instruction();
-                                    instruction.CueNumbers = new int[] { i };
+                                    instruction.CueNumbers = new int[] { cueNum };
                                     Console.WriteLine("Enter cue delay:");
                                     instruction.Delay = Convert.ToInt32(Console.ReadLine());
                                     Console.WriteLine("Enter cue duration:");
                                     instruction.Duration = Convert.ToInt32(Console.ReadLine());
+                                    instructions.Add(instruction);
+                                    cueNum++;
                                 }
                             }
                             catch
                             {
-
+                                Console.WriteLine("Yeah, bad call buddy");
                             }
                         }
+
+                        FiringSequence firingSequence = new FiringSequence();
+                        firingSequence.instructions = instructions.ToArray();
+                        string jsonFiringSequence = JsonSerializer.Serialize(firingSequence);
+                        File.WriteAllText(o.OutputFile, jsonFiringSequence);
                     }
                     else
                     {
